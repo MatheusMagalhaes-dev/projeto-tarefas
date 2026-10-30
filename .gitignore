@@ -1,0 +1,16 @@
+
+# Segredos e configurações locais
+.env
+.env.*
+
+# Permitir um exemplo sem segredos
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Configurações locais de editores
+.vscode/

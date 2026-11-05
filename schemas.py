@@ -1,5 +1,5 @@
+from typing import Literal
 from pydantic import BaseModel, ConfigDict
-
 
 # =========================
 # QUADROS
@@ -7,11 +7,13 @@ from pydantic import BaseModel, ConfigDict
 
 class QuadroCreate(BaseModel):
     nome: str
+    tipo: Literal["tarefas", "personalizado"] = "tarefas"
 
 
 class QuadroResponse(BaseModel):
     id: int
     nome: str
+    tipo: Literal["tarefas", "personalizado"]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,6 +22,7 @@ class ListaResumoResponse(BaseModel):
     id: int
     nome: str
     quadro_id: int
+    ordem: int
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,10 +30,10 @@ class ListaResumoResponse(BaseModel):
 class QuadroComListasResponse(BaseModel):
     id: int
     nome: str
+    tipo: Literal["tarefas", "personalizado"]
     listas: list[ListaResumoResponse]
 
     model_config = ConfigDict(from_attributes=True)
-
 
 # =========================
 # LISTAS
@@ -45,6 +48,7 @@ class ListaResponse(BaseModel):
     id: int
     nome: str
     quadro_id: int
+    ordem: int
 
     model_config = ConfigDict(from_attributes=True)
 

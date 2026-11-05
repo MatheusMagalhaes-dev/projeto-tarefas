@@ -9,6 +9,12 @@ class QuadroDB(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
+    tipo = Column(
+        String(30),
+        nullable=False,
+        default="tarefas",
+        server_default="tarefas",
+    )
 
     listas = relationship(
         "ListaDB",
@@ -17,11 +23,14 @@ class QuadroDB(Base):
     )
 
 
+
 class ListaDB(Base):
     __tablename__ = "listas"
 
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String(255), nullable=False)
+    ordem = Column(Integer, nullable=False, default=0)
+
     quadro_id = Column(
         Integer,
         ForeignKey("quadros.id", ondelete="CASCADE"),
@@ -38,6 +47,7 @@ class ListaDB(Base):
         back_populates="lista",
         cascade="all, delete-orphan",
     )
+
 
 
 class TarefaDB(Base):

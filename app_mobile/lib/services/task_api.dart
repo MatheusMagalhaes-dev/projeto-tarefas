@@ -31,19 +31,26 @@ class TaskApi {
         .toList();
   }
 
-  Future<Board> createBoard(String name) async {
-    final response = await _client
-        .post(
-          Uri.parse('$baseUrl/boards'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'nome': name}),
-        )
-        .timeout(const Duration(seconds: 10));
+  
+Future<Board> createBoard(String name, {String type = 'tarefas'}) async {
+  final response = await _client
+      .post(
+        Uri.parse('$baseUrl/boards'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'nome': name,
+          'tipo': type,
+        }),
+      )
+      .timeout(const Duration(seconds: 10));
 
-    _checkResponse(response);
+  _checkResponse(response);
 
-    return Board.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
-  }
+  return Board.fromJson(
+    jsonDecode(response.body) as Map<String, dynamic>,
+  );
+}
+
 
   Future<void> deleteBoard(int boardId) async {
     final response = await _client

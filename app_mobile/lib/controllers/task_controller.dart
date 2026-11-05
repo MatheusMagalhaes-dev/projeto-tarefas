@@ -85,16 +85,22 @@ class TaskController extends ChangeNotifier {
     }
   }
 
-  Future<void> createBoard(String name) async {
-    final board = await _api.createBoard(name);
+  Future<void> createBoard(
+  String name, {
+  String type = 'tarefas',
+}) async {
+  final board = await _api.createBoard(
+    name,
+    type: type,
+  );
 
-    _boards.add(board);
-    _selectedBoard = board;
+  _boards.add(board);
+  _selectedBoard = board;
 
-    notifyListeners();
+  notifyListeners();
 
-    await loadBoardData(board);
-  }
+  await loadBoardData(board);
+}
 
   Future<void> deleteBoard(Board board) async {
     await _api.deleteBoard(board.id);
@@ -175,6 +181,54 @@ class TaskController extends ChangeNotifier {
 
     _replaceTask(updated);
   }
+
+  Future<void> advanceTask(Task task, TaskList currentList) async {
+  if (task.listId == null || task.listId != currentList.id) return;
+
+  final board = _boards.firstWhere(
+    (item) => item.id == currentList.boardId,
+  );
+
+  if (board.type != 'tarefas') return;
+
+  final boardLists = _listsByBoard[currentList.boardId];
+
+  if (boardLists == null) return;
+
+  final nextOrder = currentList.order == 2
+      ? 0
+      : currentList.order + 1;
+
+  TaskList? nextList;
+
+  for (final list in boardLists) {
+    if (list.order == nextOrder) {
+      nextList = list;
+      break;
+    }
+  }
+
+  if (nextList == null) return;
+
+  final updatedTask = Task(
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    completed: nextOrder == 2,
+    listId: nextList.id,
+  );
+
+  final updated = await _api.updateTask(updatedTask);
+
+  _tasksByList[currentList.id]?.removeWhere(
+    (item) => item.id == task.id,
+  );
+
+  _tasksByList.putIfAbsent(nextList.id, () => []);
+  _tasksByList[nextList.id]!.add(updated);
+
+  notifyListeners();
+}
 
   Future<void> deleteTask(Task task) async {
     await _api.deleteTask(task.id);

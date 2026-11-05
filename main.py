@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -62,16 +63,49 @@ def criar_quadro(
     quadro: QuadroCreate,
     banco: Session = Depends(obter_banco),
 ):
-    novo_quadro = QuadroDB(
-        nome=quadro.nome,
-    )
+    try:
+        # 1. Criar o quadro
+        novo_quadro = QuadroDB(
+            nome=quadro.nome,
+            tipo=quadro.tipo,
+        )
 
-    banco.add(novo_quadro)
-    banco.commit()
-    banco.refresh(novo_quadro)
+        banco.add(novo_quadro)
 
-    return novo_quadro
+        # 2. Gerar o ID do quadro
+        banco.flush()
 
+        # 3. Criar listas padrão somente para quadros de tarefas
+        if quadro.tipo == "tarefas":
+            listas_padrao = [
+                ListaDB(
+                    nome="Tarefas",
+                    quadro_id=novo_quadro.id,
+                    ordem=0,
+                ),
+                ListaDB(
+                    nome="Em andamento",
+                    quadro_id=novo_quadro.id,
+                    ordem=1,
+                ),
+                ListaDB(
+                    nome="Concluído",
+                    quadro_id=novo_quadro.id,
+                    ordem=2,
+                ),
+            ]
+
+            banco.add_all(listas_padrao)
+
+        # 4. Salvar tudo no banco
+        banco.commit()
+        banco.refresh(novo_quadro)
+
+        return novo_quadro
+
+    except Exception:
+        banco.rollback()
+        raise
 
 @app.get(
     "/boards",
@@ -153,9 +187,27 @@ def criar_lista(
             detail="Quadro não encontrado",
         )
 
+    # Encontrar a última ordem utilizada no quadro
+    ultima_lista = (
+        banco.query(ListaDB)
+        .filter(ListaDB.quadro_id == lista.quadro_id)
+        .order_by(
+            ListaDB.ordem.desc(),
+            ListaDB.id.desc(),
+        )
+        .first()
+    )
+
+    nova_ordem = (
+        ultima_lista.ordem + 1
+        if ultima_lista is not None
+        else 0
+    )
+
     nova_lista = ListaDB(
         nome=lista.nome,
         quadro_id=lista.quadro_id,
+        ordem=nova_ordem,
     )
 
     banco.add(nova_lista)
@@ -184,7 +236,10 @@ def listar_listas(
     listas = (
         banco.query(ListaDB)
         .filter(ListaDB.quadro_id == board_id)
-        .order_by(ListaDB.id)
+        .order_by(
+            ListaDB.ordem,
+            ListaDB.id,
+        )
         .all()
     )
 

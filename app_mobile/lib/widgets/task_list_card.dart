@@ -35,9 +35,23 @@ class TaskListCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    list.name,
-                    style: Theme.of(context).textTheme.titleMedium,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          list.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${tasks.length}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(onPressed: onAddTask, icon: const Icon(Icons.add)),

@@ -10,6 +10,9 @@ import '../widgets/task_form_dialog.dart';
 import '../widgets/task_list_card.dart';
 import '../widgets/text_input_dialog.dart';
 
+import '../widgets/ai_assistant/ai_button.dart';
+import '../widgets/ai_assistant/ai_chat_sheet.dart';
+
 class TaskHomePage extends StatefulWidget {
   const TaskHomePage({
     super.key,
@@ -30,6 +33,18 @@ class _TaskHomePageState extends State<TaskHomePage>
 
   late final AnimationController _completionController;
   late final Animation<double> _completionOpacity;
+
+  void _openAiAssistant() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => const AiChatSheet(),
+    );
+  }
 
   @override
   void initState() {
@@ -113,16 +128,53 @@ class _TaskHomePageState extends State<TaskHomePage>
   // QUADROS
 
   Future<void> _createBoard() async {
-    final name = await _showTextDialog(title: 'Novo quadro');
+  final type = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Tipo de quadro'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.checklist),
+            title: const Text('Tarefas'),
+            subtitle: const Text(
+              'Organize tarefas em etapas automaticamente.',
+            ),
+            onTap: () {
+              Navigator.pop(dialogContext, 'tarefas');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.dashboard_customize_outlined),
+            title: const Text('Personalizado'),
+            subtitle: const Text(
+              'Crie suas próprias listas livremente.',
+            ),
+            onTap: () {
+              Navigator.pop(dialogContext, 'personalizado');
+            },
+          ),
+        ],
+      ),
+    ),
+  );
 
-    if (name == null) return;
+  if (type == null) return;
 
-    try {
-      await _controller.createBoard(name);
-    } catch (error) {
-      _showError(error);
-    }
+  final name = await _showTextDialog(title: 'Novo quadro');
+
+  if (name == null || name.trim().isEmpty) return;
+
+  try {
+    await _controller.createBoard(
+      name.trim(),
+      type: type,
+    );
+  } catch (error) {
+    _showError(error);
   }
+}
 
   Future<void> _deleteBoard(Board board) async {
     if (!await _confirmDialog('Excluir o quadro "${board.name}"?')) {
@@ -218,19 +270,28 @@ class _TaskHomePageState extends State<TaskHomePage>
     }
   }
 
-  Future<void> _toggleTask(Task task, bool? value) async {
-    if (value == null) return;
+ Future<void> _toggleTask(Task task, TaskList list) async {
+  try {
+    final board = _controller.boards.firstWhere(
+      (item) => item.id == list.boardId,
+    );
 
-    try {
-      await _controller.toggleTask(task, value);
+    if (board.type == 'tarefas') {
+      await _controller.advanceTask(task, list);
 
-      if (value) {
+      if (list.order == 1) {
         _playCompletionPulse();
       }
-    } catch (error) {
-      _showError(error);
+    } else {
+      await _controller.toggleTask(
+        task,
+        !task.completed,
+      );
     }
+  } catch (error) {
+    _showError(error);
   }
+}
 
   Future<void> _deleteTask(Task task) async {
     if (!await _confirmDialog('Excluir a tarefa "${task.title}"?')) {
@@ -341,9 +402,24 @@ class _TaskHomePageState extends State<TaskHomePage>
                       ),
                     )
                   : _buildBoardContent(board),
-              floatingActionButton: FloatingActionButton(
-                onPressed: board == null ? _createBoard : _createList,
-                child: const Icon(Icons.add),
+              bottomNavigationBar: SafeArea(
+                top: false,
+                child: SizedBox(
+                  height: 84,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AiButton(onPressed: _openAiAssistant),
+                      Positioned(
+                        right: 16,
+                        child: FloatingActionButton.small(
+                          onPressed: board == null ? _createBoard : _createList,
+                          child: const Icon(Icons.add),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             IgnorePointer(
@@ -395,7 +471,7 @@ class _TaskHomePageState extends State<TaskHomePage>
                       onAddTask: () => _createTask(list),
                       onDeleteList: () => _deleteList(list),
                       onToggleTask: (task) {
-                        _toggleTask(task, !task.completed);
+                        _toggleTask(task, list);
                       },
                       onEditTask: _editTask,
                       onDeleteTask: _deleteTask,
